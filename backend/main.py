@@ -1,140 +1,110 @@
-from fastapi import FastAPI, HTTPException, Request
+import os
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import os
-import openai
-import nltk
-
 from langchain_community.document_loaders import UnstructuredURLLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough
 
+from utils.text_processing import split_text
+from utils.chroma_handler import create_chroma_index, load_chroma_index
+from utils.logger import get_logger
 
-try:
-    from langchain_community.vectorstores import Chroma
-    chroma_available = True
-except ImportError:
-    chroma_available = False
+# Load environment variables
+load_dotenv()
 
+# Initialize FastAPI and Logger
+app = FastAPI(title="🧠 SmartBot: News Research Tool", version="1.0")
+logger = get_logger("SmartBot")
 
-
-app = FastAPI(title="News Research Tool API", version="1.0")
-
-
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],  # Replace with your frontend domain for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key or not api_key.startswith("sk-"):
-    raise Exception("❌ OpenAI API key not found in environment.")
-openai.api_key = api_key
-
-
-nltk.download("punkt_tab", quiet=True)
-nltk.download("punkt", quiet=True)
-nltk.download("averaged_perceptron_tagger_eng", quiet=True)
-
-index_folder = "chroma_db"
-
-
-
-class SafeOpenAIEmbeddings:
-    def embed_query(self, text: str):
-        response = openai.embeddings.create(model="text-embedding-3-small", input=text)
-        return response.data[0].embedding
-
-    def embed_documents(self, texts):
-        response = openai.embeddings.create(model="text-embedding-3-small", input=texts)
-        return [r.embedding for r in response.data]
-
-
-
+# Define Request Models
 class URLRequest(BaseModel):
     urls: list[str]
 
-
-class QueryRequest(BaseModel):
+class QuestionRequest(BaseModel):
     question: str
 
+# Root route for health check
+@app.get("/")
+def root():
+    return {"message": "🧠 SmartBot API is running!"}
 
 
+# Endpoint: Process URLs
 @app.post("/process-urls")
-async def process_urls(req: URLRequest):
+async def process_urls(request: URLRequest):
+    """
+    1️⃣ Fetch text from given URLs
+    2️⃣ Split into chunks
+    3️⃣ Embed & store in Chroma
+    """
     try:
-        valid_urls = [u.strip() for u in req.urls if u.strip()]
-        if not valid_urls:
+        urls = [u.strip() for u in request.urls if u.strip()]
+        if not urls:
             raise HTTPException(status_code=400, detail="No valid URLs provided.")
 
-        loader = UnstructuredURLLoader(urls=valid_urls)
+        loader = UnstructuredURLLoader(urls=urls)
         data = loader.load()
 
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-        docs = text_splitter.split_documents(data)
+        docs = split_text(data)
+        create_chroma_index(docs)
 
-        embeddings = SafeOpenAIEmbeddings()
-
-        if chroma_available:
-            vectorstore_chroma = Chroma.from_documents(
-                docs, embeddings, persist_directory=index_folder
-            )
-            vectorstore_chroma.persist()
-            return {"message": "✅ URLs processed and Chroma index saved."}
-        else:
-            return {"message": "⚠️ Chroma not installed locally — processed without saving index."}
+        logger.info("✅ Chroma index created successfully.")
+        return {"message": "✅ URLs processed and Chroma index saved!"}
 
     except Exception as e:
+        logger.error(f"Error processing URLs: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
+# Endpoint: Ask a Question
 @app.post("/ask")
-async def ask_question(req: QueryRequest):
+async def ask_question(request: QuestionRequest):
+    """
+    1️⃣ Load Chroma vector store
+    2️⃣ Retrieve relevant context
+    3️⃣ Use OpenAI to answer the question
+    """
     try:
-        from langchain_openai import ChatOpenAI
-        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+        question = request.question.strip()
+        if not question:
+            raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
-        if chroma_available and os.path.exists(index_folder):
-            embeddings = SafeOpenAIEmbeddings()
-            vectorstore = Chroma(
-                persist_directory=index_folder,
-                embedding_function=embeddings
-            )
-            retriever = vectorstore.as_retriever()
-        else:
-            retriever = None
+        # Load existing Chroma index
+        vectorstore = load_chroma_index()
+
+        # Create retriever + LLM chain
+        retriever = vectorstore.as_retriever()
+        llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
 
         prompt = ChatPromptTemplate.from_template(
             "Answer the question based on the context:\n\n{context}\n\nQuestion: {question}"
         )
-        document_chain = prompt | llm | StrOutputParser()
 
-        if retriever:
-            retriever_chain = RunnableParallel({
-                "context": retriever,
-                "question": RunnablePassthrough(),
-            })
-            retrieval_chain = retriever_chain | document_chain
-            result = retrieval_chain.invoke(req.question)
-        else:
-            result = llm.invoke(f"Answer this based on general knowledge: {req.question}")
+        document_chain = prompt | llm | StrOutputParser()
+        retriever_chain = RunnableParallel({
+            "context": retriever,
+            "question": RunnablePassthrough(),
+        })
+        retrieval_chain = retriever_chain | document_chain
+
+        result = retrieval_chain.invoke(question)
+        logger.info(f"💬 Question answered: {question}")
 
         return {"answer": result}
 
     except Exception as e:
+        logger.error(f"Error answering question: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-@app.get("/")
-async def health():
-    return {"status": "✅ API is running"}

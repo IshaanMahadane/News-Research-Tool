@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🧠 SmartBot: News Research Tool</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>🧠 SmartBot: News Research Tool</h1>
+    <p class="subtitle">Enter news article URLs and ask research questions.</p>
+
+    <div class="card">
+      <h2>🔗 Add Article URLs</h2>
+      <input type="text" id="url1" placeholder="Enter URL 1">
+      <input type="text" id="url2" placeholder="Enter URL 2">
+      <input type="text" id="url3" placeholder="Enter URL 3">
+      <button onclick="processURLs()">Process URLs</button>
+      <p id="process-status"></p>
+    </div>
+
+    <div class="card">
+      <h2>💬 Ask a Question</h2>
+      <input type="text" id="question" placeholder="Enter your question">
+      <button onclick="askQuestion()">Ask</button>
+      <div id="answer-box">
+        <h3>🧾 Answer</h3>
+        <p id="answer"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
