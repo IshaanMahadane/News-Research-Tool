@@ -1,13 +1,16 @@
-streamlit==1.40.2
 fastapi==0.115.0
 uvicorn==0.30.6
+gunicorn==23.0.0
+
 python-dotenv==1.0.1
 openai==1.51.0
+
 langchain==0.2.12
 langchain-core==0.2.29
 langchain-community==0.2.7
 langchain-openai==0.1.14
 langchain-text-splitters==0.2.2
+
 chromadb==0.5.3
 pandas==2.2.3
 numpy==1.26.4
