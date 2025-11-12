@@ -128,3 +128,7 @@ async def ask_question(request: QuestionRequest):
     except Exception as e:
         logger.error(f"Error answering question: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/debug")
+def debug_logs():
+    return {"message": "Backend running fine — check chroma and URL logic."}

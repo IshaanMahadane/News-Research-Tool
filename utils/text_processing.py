@@ -1,12 +1,13 @@
-import nltk
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.schema import Document
 
-# Ensure required downloads
-nltk.download("punkt_tab", quiet=True)
-nltk.download("punkt", quiet=True)
-nltk.download("averaged_perceptron_tagger_eng", quiet=True)
-
-def split_text(documents, chunk_size=1000, chunk_overlap=100):
-    """Split text documents into smaller chunks."""
-    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-    return splitter.split_documents(documents)
+def split_text(docs):
+    """
+    Split raw text from loaded documents into chunks for embedding.
+    """
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    all_texts = []
+    for d in docs:
+        text = d.page_content if hasattr(d, "page_content") else str(d)
+        all_texts.extend(splitter.split_text(text))
+    return [Document(page_content=t) for t in all_texts]
