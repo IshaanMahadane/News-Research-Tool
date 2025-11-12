@@ -6,8 +6,8 @@ gunicorn==23.0.0
 # --- Environment + config ---
 python-dotenv==1.0.1
 
-# --- LangChain + OpenAI (modern, stable, compatible set) ---
-openai==1.6.1
+# --- LangChain + OpenAI (fully compatible, latest stable) ---
+openai==1.51.0
 langchain==0.2.11
 langchain-core==0.2.29
 langchain-community==0.2.7
