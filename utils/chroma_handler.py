@@ -1,23 +1,31 @@
-from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
-
-# Use global store (memory-only for Railway)
-global_vectorstore = None
+from chromadb.utils import embedding_functions
+from chromadb import Client
+from chromadb.config import Settings
+import os
 
 def create_chroma_index(docs):
-    """
-    Create an in-memory Chroma index from text chunks.
-    """
-    global global_vectorstore
-    embeddings = OpenAIEmbeddings()
-    global_vectorstore = Chroma.from_texts([d.page_content for d in docs], embedding=embeddings)
-    return global_vectorstore
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("❌ Missing OPENAI_API_KEY environment variable!")
+
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-3-small",
+        api_key=api_key  # ✅ Modern API (no proxies)
+    )
+
+    from langchain_community.vectorstores import Chroma
+    vectorstore = Chroma.from_documents(docs, embeddings, persist_directory="./chroma_db")
+    vectorstore.persist()
+    return vectorstore
+
 
 def load_chroma_index():
-    """
-    Retrieve the in-memory Chroma index (if created).
-    """
-    global global_vectorstore
-    if not global_vectorstore:
-        raise ValueError("No in-memory vector store found. Process URLs first!")
-    return global_vectorstore
+    from langchain_community.vectorstores import Chroma
+    api_key = os.getenv("OPENAI_API_KEY")
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-3-small",
+        api_key=api_key
+    )
+    vectorstore = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+    return vectorstore
