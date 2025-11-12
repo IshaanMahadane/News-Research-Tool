@@ -1,5 +1,5 @@
 // Replace this with your actual AWS Elastic Beanstalk backend URL after deployment
-const BACKEND_URL = "https://your-app-name.eu-north-1.elasticbeanstalk.com";
+const BACKEND_URL = "https://smartbot-production.up.railway.app";
 
 async function processURLs() {
   const urls = [

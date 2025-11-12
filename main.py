@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
+
 from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -19,8 +20,10 @@ from utils.logger import get_logger
 import nltk
 from nltk.data import find
 
-nltk.data.path.append("/app/nltk_data")  # For Railway/AWS
+# Railway/AWS safe path for nltk_data
+nltk.data.path.append("/app/nltk_data")
 
+# Try loading important nltk packages gracefully
 try:
     find("tokenizers/punkt")
 except LookupError:
@@ -35,10 +38,10 @@ load_dotenv()
 app = FastAPI(title="🧠 SmartBot: News Research Tool", version="1.0")
 logger = get_logger("SmartBot")
 
-# Enable CORS
+# Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace * with your frontend URL for production
+    allow_origins=["*"],  # For production, replace * with your actual frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,6 +55,7 @@ class QuestionRequest(BaseModel):
     question: str
 
 # -------------------- 📁 STATIC FRONTEND SERVING --------------------
+# Serve static frontend files
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 @app.get("/")
@@ -105,6 +109,7 @@ async def ask_question(request: QuestionRequest):
         retriever = vectorstore.as_retriever()
 
         llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+
         prompt = ChatPromptTemplate.from_template(
             "Answer the question based on the context:\n\n{context}\n\nQuestion: {question}"
         )
