@@ -6,12 +6,12 @@ gunicorn==23.0.0
 # --- Environment + config ---
 python-dotenv==1.0.1
 
-# --- Langchain + OpenAI (compatible versions) ---
+# --- Compatible LangChain + OpenAI versions ---
 openai==1.6.1
-langchain==0.0.350
-langchain-core==0.1.7
-langchain-community==0.0.7
-langchain-openai==0.0.2
+langchain==0.1.16
+langchain-core==0.2.10
+langchain-community==0.2.7
+langchain-openai==0.1.14
 langchain-text-splitters==0.2.2
 
 # --- Vector DB ---
@@ -29,3 +29,4 @@ requests==2.32.3
 rich==13.9.4
 unstructured==0.10.30
 python-magic==0.4.27
+
